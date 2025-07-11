@@ -5,8 +5,8 @@ local Window = Rayfield:CreateWindow({
    LoadingSubtitle = "Wait...",
    ConfigurationSaving = {
       Enabled = true,
-      FolderName = "WnnzConfig", -- Custom folder name
-      FileName = "WnnzSettings"  -- Configuration file name
+      FolderName = "WanzHubConfig",
+      FileName = "ARXSettings"
    }
 })
 
@@ -16,25 +16,29 @@ local Tab = Window:CreateTab("MENU", 4483362458)
 spawn(function()
     while task.wait(1) do
         pcall(function()
-            if not workspace:FindFirstChild("Lobby") then
+            local lobbyExists = workspace:FindFirstChild("Lobby")
+            
+            -- Only remove animation UI if lobby doesn't exist
+            if not lobbyExists then
                 local gui = game:GetService("Players").LocalPlayer.PlayerGui
                 local animUI = gui:FindFirstChild("GameEndedAnimationUI")
                 if animUI then 
                     animUI:Destroy() 
                 end
+                
+                -- Also remove summon amount only when lobby doesn't exist
+                local summon = game:GetService("Players").LocalPlayer:FindFirstChild("Summon_Amount")
+                if summon then summon:Destroy() end
             end
-            
-            local summon = game:GetService("Players").LocalPlayer:FindFirstChild("Summon_Amount")
-            if summon then summon:Destroy() end
         end)
     end
 end)
 
--- Player Stats UI Toggle with unique flag
+-- Player Stats UI Toggle
 local StatsUIToggle = Tab:CreateToggle({
    Name = "Player Stats UI",
    CurrentValue = false,
-   Flag = "PlayerStatsToggle", -- Unique flag for saving
+   Flag = "PlayerStatsToggle",
    Callback = function(Value)
       if Value then
          -- Create UI function here
@@ -55,7 +59,7 @@ local function showGameResults()
     rewardCheckCooldown = true
     
     pcall(function()
-        task.wait(2)
+        task.wait(2) -- Wait for rewards to load
         
         local player = game:GetService("Players").LocalPlayer
         local rewardsFolder = player:FindFirstChild("RewardsShow")
@@ -102,13 +106,13 @@ spawn(function()
     end
 end)
 
--- Voting System with unique flags
+-- Voting System
 local votingActive = { Next = false, Retry = false }
 
 local NextVoteToggle = Tab:CreateToggle({
    Name = "Vote Next",
    CurrentValue = false,
-   Flag = "VoteNextToggle", -- Unique flag for saving
+   Flag = "VoteNextToggle",
    Callback = function(Value)
       votingActive.Next = Value
       if Value then
@@ -125,7 +129,7 @@ local NextVoteToggle = Tab:CreateToggle({
 local RetryVoteToggle = Tab:CreateToggle({
    Name = "Vote Retry",
    CurrentValue = false,
-   Flag = "VoteRetryToggle", -- Unique flag for saving
+   Flag = "VoteRetryToggle",
    Callback = function(Value)
       votingActive.Retry = Value
       if Value then
@@ -154,5 +158,5 @@ RetryVoteToggle:OnChanged(function(Value)
    end
 end)
 
--- Load saved configurations (MUST BE AT THE BOTTOM)
+-- Load saved configurations (MUST BE LAST LINE)
 Rayfield:LoadConfiguration()
