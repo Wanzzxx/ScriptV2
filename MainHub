@@ -10,13 +10,17 @@ local Window = Rayfield:CreateWindow({
    }
 })
 
-local Tab = Window:CreateTab("MENU", 4483362458)
+-- Create tabs
+local MainTab = Window:CreateTab("MENU", 4483362458)
+local ScriptsTab = Window:CreateTab("SCRIPTS", 4483362458)
 
--- Conditional UI Removal System
+-- ===== MAIN FUNCTIONALITY =====
+
+-- UI Removal System (Original behavior)
 spawn(function()
     while task.wait(1) do
         pcall(function()
-            -- Always remove Summon_Amount
+            -- ALWAYS remove Summon_Amount (original behavior)
             local summon = game:GetService("Players").LocalPlayer:FindFirstChild("Summon_Amount")
             if summon then summon:Destroy() end
             
@@ -33,7 +37,7 @@ spawn(function()
 end)
 
 -- Player Stats UI Toggle
-local StatsUIToggle = Tab:CreateToggle({
+local StatsUIToggle = MainTab:CreateToggle({
    Name = "Player Stats UI",
    CurrentValue = false,
    Flag = "PlayerStatsToggle",
@@ -49,26 +53,18 @@ local StatsUIToggle = Tab:CreateToggle({
    end,
 })
 
--- Enhanced Reward Detection with FIXED current amounts
+-- Enhanced Reward Detection with current amounts
 local rewardCheckCooldown = false
 
 local function getPlayerItemAmount(itemName)
     local player = game:GetService("Players").LocalPlayer
     local success, result = pcall(function()
-        -- Check both possible locations for player data
-        local playerData = game:GetService("ReplicatedStorage").Player_Data:FindFirstChild(player.Name)
-        if not playerData then
-            playerData = player:FindFirstChild("Data")
-        end
-        
+        local playerData = game:GetService("ReplicatedStorage").Player_Data:FindFirstChild(player.Name) or player:FindFirstChild("Data")
         if playerData then
-            -- Check both possible locations for items
             local items = playerData:FindFirstChild("Items") or playerData:FindFirstChild("Inventory")
             if items then
                 local item = items:FindFirstChild(itemName)
-                if item then
-                    return item:FindFirstChild("Amount") and item.Amount.Value or 1
-                end
+                return item and item:FindFirstChild("Amount") and item.Amount.Value or 0
             end
         end
         return 0
@@ -91,19 +87,11 @@ local function showGameResults()
             local foundRewards = false
             
             for _, item in pairs(rewardsFolder:GetChildren()) do
-                local rewardAmount = 0
-                local itemName = item.Name
-                
-                -- Handle different reward types
-                if item:IsA("NumberValue") then
-                    rewardAmount = item.Value
-                elseif item:IsA("Folder") then
-                    rewardAmount = item:FindFirstChild("Amount") and item.Amount.Value or 1
-                end
+                local rewardAmount = item:IsA("NumberValue") and item.Value or (item:FindFirstChild("Amount") and item.Amount.Value or 0)
                 
                 if rewardAmount > 0 then
-                    local currentAmount = getPlayerItemAmount(itemName)
-                    table.insert(rewardText, string.format("[%dx] %s [Now: %dx]", rewardAmount, itemName, currentAmount))
+                    local currentAmount = getPlayerItemAmount(item.Name)
+                    table.insert(rewardText, string.format("[%dx] %s [Now: %dx]", rewardAmount, item.Name, currentAmount))
                     foundRewards = true
                 end
             end
@@ -113,13 +101,6 @@ local function showGameResults()
                     Title = "Game Results",
                     Content = table.concat(rewardText, "\n"),
                     Duration = 6.5,
-                    Image = 4483362458,
-                })
-            else
-                Rayfield:Notify({
-                    Title = "Game Finished",
-                    Content = "No new rewards detected",
-                    Duration = 3,
                     Image = 4483362458,
                 })
             end
@@ -148,7 +129,7 @@ end)
 -- Voting System
 local votingActive = { Next = false, Retry = false }
 
-local NextVoteToggle = Tab:CreateToggle({
+local NextVoteToggle = MainTab:CreateToggle({
    Name = "Vote Next",
    CurrentValue = false,
    Flag = "VoteNextToggle",
@@ -166,7 +147,7 @@ local NextVoteToggle = Tab:CreateToggle({
    end,
 })
 
-local RetryVoteToggle = Tab:CreateToggle({
+local RetryVoteToggle = MainTab:CreateToggle({
    Name = "Vote Retry",
    CurrentValue = false,
    Flag = "VoteRetryToggle",
@@ -198,6 +179,31 @@ RetryVoteToggle:OnChanged(function(Value)
       votingActive.Next = false
    end
 end)
+
+-- ===== ADDITIONAL SCRIPTS TAB =====
+ScriptsTab:CreateSection("Extra Features")
+
+-- Example: Auto Farm Toggle
+local AutoFarmToggle = ScriptsTab:CreateToggle({
+   Name = "Auto Farm Coins",
+   CurrentValue = false,
+   Flag = "AutoFarmToggle",
+   Callback = function(Value)
+      if Value then
+         Rayfield:Notify({Title = "Auto Farm", Content = "Enabled", Duration = 2})
+      else
+         Rayfield:Notify({Title = "Auto Farm", Content = "Disabled", Duration = 2})
+      end
+   end,
+})
+
+-- Example: Teleport Button
+ScriptsTab:CreateButton({
+   Name = "Teleport to Spawn",
+   Callback = function()
+      Rayfield:Notify({Title = "Teleporting", Content = "Going to spawn point", Duration = 2})
+   end,
+})
 
 -- Load saved configurations (MUST BE LAST LINE)
 Rayfield:LoadConfiguration()
