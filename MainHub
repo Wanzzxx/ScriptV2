@@ -1,75 +1,130 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
-   Name = "Wanz Hub [ARX]",
+   Name = "Wanz HUB",
    LoadingTitle = "Loading Codes",
    LoadingSubtitle = "Wait...",
    ConfigurationSaving = {
       Enabled = true,
-      FolderName = "WanzHubConfig",
-      FileName = "ARXSettings"
+      FolderName = nil,
+      FileName = "Voting System"
    }
 })
 
--- Create tabs
-local MainTab = Window:CreateTab("MENU", 4483362458)
-local ScriptsTab = Window:CreateTab("SCRIPTS", 4483362458)
+local Tab = Window:CreateTab("MENU", 4483362458) -- Make sure this is before creating toggles
 
--- ===== MAIN FUNCTIONALITY =====
-
--- UI Removal System (Original behavior)
-spawn(function()
-    while task.wait(1) do
-        pcall(function()
-            -- ALWAYS remove Summon_Amount (original behavior)
-            local summon = game:GetService("Players").LocalPlayer:FindFirstChild("Summon_Amount")
-            if summon then summon:Destroy() end
-            
-            -- Only remove GameEndedAnimationUI when there's no lobby
-            if not workspace:FindFirstChild("Lobby") then
-                local gui = game:GetService("Players").LocalPlayer.PlayerGui
-                local animUI = gui:FindFirstChild("GameEndedAnimationUI")
-                if animUI then 
-                    animUI:Destroy() 
-                end
-            end
-        end)
-    end
-end)
-
--- Player Stats UI Toggle
-local StatsUIToggle = MainTab:CreateToggle({
-   Name = "Player Stats UI",
+-- UI Toggle (now properly placed)
+local StatsUIToggle = Tab:CreateToggle({
+   Name = "Show UI",
    CurrentValue = false,
-   Flag = "PlayerStatsToggle",
+   Flag = "StatsUI",
    Callback = function(Value)
       if Value then
-         -- Create UI function here
+         createStatsUI()
       else
-         local gui = game:GetService("Players").LocalPlayer.PlayerGui
-         if gui:FindFirstChild("PlayerStatsGUI") then
-            gui.PlayerStatsGUI:Destroy()
+         if game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("PlayerStatsGUI") then
+            game:GetService("Players").LocalPlayer.PlayerGui.PlayerStatsGUI:Destroy()
          end
       end
    end,
 })
 
--- Enhanced Reward Detection with current amounts
+-- Stats UI Creation Function
+function createStatsUI()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Players = game:GetService("Players")
+    local player = Players.LocalPlayer
+    local RunService = game:GetService("RunService")
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "PlayerStatsGUI"
+    screenGui.Parent = player.PlayerGui
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 220, 0, 150)
+    mainFrame.Position = UDim2.new(0.5, -110, 0.1, 0)
+    mainFrame.AnchorPoint = Vector2.new(0.5, 0)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+    mainFrame.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = mainFrame
+
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Text = player.Name .. "'s Stats"
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 18
+    title.Parent = mainFrame
+
+    local cornerTitle = Instance.new("UICorner")
+    cornerTitle.CornerRadius = UDim.new(0, 8)
+    cornerTitle.Parent = title
+
+    local statLabels = {
+        beachBall = Instance.new("TextLabel"),
+        traitReroll = Instance.new("TextLabel"),
+        statKey = Instance.new("TextLabel"),
+        playTime = Instance.new("TextLabel")
+    }
+
+    local yPosition = 35
+    for _, label in pairs(statLabels) do
+        label.Size = UDim2.new(1, -20, 0, 25)
+        label.Position = UDim2.new(0, 10, 0, yPosition)
+        label.BackgroundTransparency = 1
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.Font = Enum.Font.Gotham
+        label.TextSize = 16
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = mainFrame
+        yPosition += 25
+    end
+
+    statLabels.beachBall.Text = "Beach Balls: Loading..."
+    statLabels.traitReroll.Text = "Trait Rerolls: Loading..."
+    statLabels.statKey.Text = "Stat Keys: Loading..."
+    statLabels.playTime.Text = "Play Time: 00:00:00"
+
+    -- Rest of your stats UI code...
+end
+
+-- Auto-remove UI elements
+spawn(function()
+    while task.wait(1) do
+        pcall(function()
+            local gui = game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
+            if gui and gui:FindFirstChild("GameEndedAnimationUI") then 
+                gui.GameEndedAnimationUI:Destroy() 
+            end
+            
+            local summon = game:GetService("Players").LocalPlayer:FindFirstChild("Summon_Amount")
+            if summon then summon:Destroy() end
+        end)
+    end
+end)
+
+-- Game Rewards System
 local rewardCheckCooldown = false
 
 local function getPlayerItemAmount(itemName)
     local player = game:GetService("Players").LocalPlayer
-    local success, result = pcall(function()
-        local playerData = game:GetService("ReplicatedStorage").Player_Data:FindFirstChild(player.Name) or player:FindFirstChild("Data")
-        if playerData then
-            local items = playerData:FindFirstChild("Items") or playerData:FindFirstChild("Inventory")
-            if items then
-                local item = items:FindFirstChild(itemName)
-                return item and item:FindFirstChild("Amount") and item.Amount.Value or 0
-            end
+    local playerData = game:GetService("ReplicatedStorage").Player_Data:FindFirstChild(player.Name)
+    if playerData and playerData:FindFirstChild("Items") then
+        local item = playerData.Items:FindFirstChild(itemName)
+        if item and item:FindFirstChild("Amount") then
+            return item.Amount.Value
         end
-        return 0
-    end)
-    return success and result or 0
+    end
+    return 0
 end
 
 local function showGameResults()
@@ -83,15 +138,22 @@ local function showGameResults()
         local rewardsFolder = player:FindFirstChild("RewardsShow")
         
         if rewardsFolder then
-            local rewardText = {"Game Finished", "You got:"}
+            local rewardLines = {"Game Finished", "You got:"}
             local foundRewards = false
             
             for _, item in pairs(rewardsFolder:GetChildren()) do
-                local rewardAmount = item:IsA("NumberValue") and item.Value or (item:FindFirstChild("Amount") and item.Amount.Value or 0)
+                local rewardAmount = 0
+                local itemName = item.Name
+                
+                if item:IsA("NumberValue") then
+                    rewardAmount = item.Value
+                elseif item:IsA("Folder") and item:FindFirstChild("Amount") then
+                    rewardAmount = item.Amount.Value
+                end
                 
                 if rewardAmount > 0 then
-                    local currentAmount = getPlayerItemAmount(item.Name)
-                    table.insert(rewardText, string.format("[%dx] %s [Now: %dx]", rewardAmount, item.Name, currentAmount))
+                    local currentAmount = getPlayerItemAmount(itemName)
+                    table.insert(rewardLines, string.format("[%dx] %s [Now: %dx]", rewardAmount, itemName, currentAmount))
                     foundRewards = true
                 end
             end
@@ -99,7 +161,7 @@ local function showGameResults()
             if foundRewards then
                 Rayfield:Notify({
                     Title = "Game Results",
-                    Content = table.concat(rewardText, "\n"),
+                    Content = table.concat(rewardLines, "\n"),
                     Duration = 6.5,
                     Image = 4483362458,
                 })
@@ -111,14 +173,17 @@ local function showGameResults()
     rewardCheckCooldown = false
 end
 
--- Game End Detection
+-- Game end detection
 spawn(function()
     while task.wait(0.5) do
         pcall(function()
-            local playerGui = game:GetService("Players").LocalPlayer.PlayerGui
-            if playerGui:FindFirstChild("GameEndedAnimationUI") then
+            local player = game:GetService("Players").LocalPlayer
+            local gameEnded = player.PlayerGui:FindFirstChild("GameEndedAnimationUI")
+            local hasRewards = player:FindFirstChild("RewardsShow")
+            
+            if gameEnded or hasRewards then
                 showGameResults()
-                while playerGui:FindFirstChild("GameEndedAnimationUI") do
+                while player.PlayerGui:FindFirstChild("GameEndedAnimationUI") do
                     task.wait(1)
                 end
             end
@@ -126,13 +191,13 @@ spawn(function()
     end
 end)
 
--- Voting System
+-- Voting Toggles (now properly placed after Tab creation)
 local votingActive = { Next = false, Retry = false }
 
-local NextVoteToggle = MainTab:CreateToggle({
+local NextVoteToggle = Tab:CreateToggle({
    Name = "Vote Next",
    CurrentValue = false,
-   Flag = "VoteNextToggle",
+   Flag = "NextVoteToggle",
    Callback = function(Value)
       votingActive.Next = Value
       if Value then
@@ -147,10 +212,10 @@ local NextVoteToggle = MainTab:CreateToggle({
    end,
 })
 
-local RetryVoteToggle = MainTab:CreateToggle({
+local RetryVoteToggle = Tab:CreateToggle({
    Name = "Vote Retry",
    CurrentValue = false,
-   Flag = "VoteRetryToggle",
+   Flag = "RetryVoteToggle",
    Callback = function(Value)
       votingActive.Retry = Value
       if Value then
@@ -165,20 +230,17 @@ local RetryVoteToggle = MainTab:CreateToggle({
    end,
 })
 
--- Toggle Exclusivity
-NextVoteToggle:OnChanged(function(Value)
-   if Value then
-      RetryVoteToggle:Set(false)
-      votingActive.Retry = false
-   end
+-- Toggle management
+NextVoteToggle:OnChanged(function(Value) 
+   if Value then 
+      votingActive.Retry = false 
+      RetryVoteToggle:Set(false) 
+   end 
 end)
 
-RetryVoteToggle:OnChanged(function(Value)
-   if Value then
-      NextVoteToggle:Set(false)
-      votingActive.Next = false
-   end
+RetryVoteToggle:OnChanged(function(Value) 
+   if Value then 
+      votingActive.Next = false 
+      NextVoteToggle:Set(false) 
+   end 
 end)
-
--- Load saved configurations (MUST BE LAST LINE)
-Rayfield:LoadConfiguration()
