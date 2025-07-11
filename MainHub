@@ -1,1 +1,141 @@
 
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local Window = Rayfield:CreateWindow({
+   Name = "Wnnz",
+   LoadingTitle = "Private",
+   LoadingSubtitle = "...",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = nil,
+      FileName = "Voting System"
+   }
+})
+
+local Tab = Window:CreateTab("MENU", 4483362458)
+
+spawn(function()
+    while task.wait(1) do
+        pcall(function()
+            local gui = game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
+            if gui and gui:FindFirstChild("GameEndedAnimationUI") then 
+                gui.GameEndedAnimationUI:Destroy() 
+            end
+            
+            local summon = game:GetService("Players").LocalPlayer:FindFirstChild("Summon_Amount")
+            if summon then summon:Destroy() end
+        end)
+    end
+end)
+
+local function showGameResults()
+    pcall(function()
+        task.wait(3)
+        
+        local player = game:GetService("Players").LocalPlayer
+        local rewardsFolder = player:FindFirstChild("RewardsShow")
+        
+        if rewardsFolder then
+            local rewardLines = {"Game Finished, You got:"}
+            local foundRewards = false
+            
+            for _, item in pairs(rewardsFolder:GetChildren()) do
+                local amount = 1
+                local name = item.Name
+                
+                if item:IsA("NumberValue") then
+                    amount = item.Value
+                elseif item:IsA("Folder") then
+                    if item:FindFirstChild("Amount") then
+                        amount = item.Amount.Value
+                    end
+                end
+                
+                if amount > 0 then
+                    table.insert(rewardLines, string.format("[%dx] %s", amount, name))
+                    foundRewards = true
+                end
+            end
+            
+            if foundRewards then
+                Rayfield:Notify({
+                    Title = "Game Results",
+                    Content = table.concat(rewardLines, "\n"),
+                    Duration = 5.5,
+                    Image = 4483362458,
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Game Finished",
+                    Content = "No rewards detected",
+                    Duration = 3,
+                    Image = 4483362458,
+                })
+            end
+        end
+    end)
+end
+
+local lastCheck = 0
+spawn(function()
+    while task.wait(0.5) do
+        pcall(function()
+            local playerGui = game:GetService("Players").LocalPlayer.PlayerGui
+            if playerGui:FindFirstChild("GameEndedAnimationUI") and os.time() - lastCheck > 10 then
+                lastCheck = os.time()
+                showGameResults()
+            end
+        end)
+    end
+end)
+
+local votingActive = { Next = false, Retry = false }
+
+local NextVoteToggle = Tab:CreateToggle({
+   Name = "Vote Next",
+   CurrentValue = false,
+   Flag = "NextVoteToggle",
+   Callback = function(Value)
+      votingActive.Next = Value
+      if Value then
+         Rayfield:Notify({ Title = "Voted", Content = "You voted for Next Map", Duration = 3 })
+         spawn(function()
+             while votingActive.Next do
+                 game:GetService("ReplicatedStorage").Remote.Server.OnGame.Voting.VoteNext:FireServer()
+                 task.wait(1)
+             end
+         end)
+      end
+   end,
+})
+
+local RetryVoteToggle = Tab:CreateToggle({
+   Name = "Vote Retry",
+   CurrentValue = false,
+   Flag = "RetryVoteToggle",
+   Callback = function(Value)
+      votingActive.Retry = Value
+      if Value then
+         Rayfield:Notify({ Title = "Voted", Content = "You voted to Retry Map", Duration = 3 })
+         spawn(function()
+             while votingActive.Retry do
+                 game:GetService("ReplicatedStorage").Remote.Server.OnGame.Voting.VoteRetry:FireServer()
+                 task.wait(1)
+             end
+         end)
+      end
+   end,
+})
+
+NextVoteToggle:OnChanged(function(Value) 
+   if Value then 
+      votingActive.Retry = false 
+      RetryVoteToggle:Set(false) 
+   end 
+end)
+
+RetryVoteToggle:OnChanged(function(Value) 
+   if Value then 
+      votingActive.Next = false 
+      NextVoteToggle:Set(false) 
+   end 
+end)
