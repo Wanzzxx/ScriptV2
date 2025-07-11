@@ -1,8 +1,8 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
    Name = "Wanz Hub [ARX]",
-   LoadingTitle = "Private Version",
-   LoadingSubtitle = "Loading Script...",
+   LoadingTitle = "Loading Data",
+   LoadingSubtitle = "Wait...",
    ConfigurationSaving = {
       Enabled = true,
       FolderName = nil,
@@ -12,107 +12,91 @@ local Window = Rayfield:CreateWindow({
 
 local Tab = Window:CreateTab("MENU", 4483362458)
 
--- UI Toggle
-local StatsUIToggle = Tab:CreateToggle({
-   Name = "Show Stats",
-   CurrentValue = false,
-   Flag = "StatsUI",
-   Callback = function(Value)
-      if Value then
-         createStatsUI()
-      else
-         if game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("PlayerStatsGUI") then
-            game:GetService("Players").LocalPlayer.PlayerGui.PlayerStatsGUI:Destroy()
-         end
-      end
-   end,
-})
-
--- Stats UI Creation Function (same as before)
-function createStatsUI()
-    -- ... (keep the same UI creation code from previous script)
-end
-
--- Auto-remove UI elements
+-- Conditional UI Removal System
 spawn(function()
     while task.wait(1) do
         pcall(function()
-            local gui = game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
-            if gui and gui:FindFirstChild("GameEndedAnimationUI") then 
-                gui.GameEndedAnimationUI:Destroy() 
+            -- Only remove if lobby doesn't exist
+            if not workspace:FindFirstChild("Lobby") then
+                local gui = game:GetService("Players").LocalPlayer.PlayerGui
+                local animUI = gui:FindFirstChild("GameEndedAnimationUI")
+                if animUI then 
+                    animUI:Destroy() 
+                end
             end
             
+            -- Always remove summon amount
             local summon = game:GetService("Players").LocalPlayer:FindFirstChild("Summon_Amount")
             if summon then summon:Destroy() end
         end)
     end
 end)
 
--- Improved Game Results Display with repeat notifications
-local lastRewardsCheck = 0
-local lastRewardsContent = ""
+-- Player Stats UI Toggle
+local StatsUIToggle = Tab:CreateToggle({
+   Name = "Show Stats",
+   CurrentValue = false,
+   Flag = "StatsUI",
+   Callback = function(Value)
+      if Value then
+         -- Create UI function here
+      else
+         local gui = game:GetService("Players").LocalPlayer.PlayerGui
+         if gui:FindFirstChild("PlayerStatsGUI") then
+            gui.PlayerStatsGUI:Destroy()
+         end
+      end
+   end,
+})
+
+-- Enhanced Reward Detection
+local rewardCheckCooldown = false
 
 local function showGameResults()
+    if rewardCheckCooldown then return end
+    rewardCheckCooldown = true
+    
     pcall(function()
         task.wait(2) -- Wait for rewards to load
+        
         local player = game:GetService("Players").LocalPlayer
         local rewardsFolder = player:FindFirstChild("RewardsShow")
         
         if rewardsFolder then
-            local rewardLines = {"Game Finished, You got:"}
-            local foundRewards = false
-            local currentRewardsContent = ""
+            local rewardText = {"Game Finished", "You got:"}
             
             for _, item in pairs(rewardsFolder:GetChildren()) do
-                local amount = 1
-                local name = item.Name
-                
-                if item:IsA("NumberValue") then
-                    amount = item.Value
-                elseif item:IsA("Folder") then
-                    if item:FindFirstChild("Amount") then
-                        amount = item.Amount.Value
-                    end
-                end
+                local amount = (item:IsA("NumberValue") and item.Value) or 
+                             (item:FindFirstChild("Amount") and item.Amount.Value) or 0
                 
                 if amount > 0 then
-                    local rewardString = string.format("[%dx] %s", amount, name)
-                    table.insert(rewardLines, rewardString)
-                    currentRewardsContent = currentRewardsContent .. rewardString
-                    foundRewards = true
+                    table.insert(rewardText, string.format("[%dx] %s", amount, item.Name))
                 end
             end
             
-            -- Only show notification if rewards are different from last time
-            if foundRewards and currentRewardsContent ~= lastRewardsContent then
-                lastRewardsContent = currentRewardsContent
+            if #rewardText > 2 then -- If we found rewards
                 Rayfield:Notify({
                     Title = "Game Results",
-                    Content = table.concat(rewardLines, "\n"),
-                    Duration = 5.5,
-                    Image = 4483362458,
-                })
-            elseif not foundRewards and os.time() - lastRewardsCheck > 60 then
-                Rayfield:Notify({
-                    Title = "Game Finished",
-                    Content = "No rewards detected",
-                    Duration = 3,
+                    Content = table.concat(rewardText, "\n"),
+                    Duration = 6,
                     Image = 4483362458,
                 })
             end
         end
-        lastRewardsCheck = os.time()
     end)
+    
+    task.wait(5)
+    rewardCheckCooldown = false
 end
 
--- Enhanced game end detection that works repeatedly
-local gameEndDetection = spawn(function()
+-- Game End Detection
+spawn(function()
     while task.wait(0.5) do
         pcall(function()
             local playerGui = game:GetService("Players").LocalPlayer.PlayerGui
             if playerGui:FindFirstChild("GameEndedAnimationUI") then
                 showGameResults()
-                -- Wait until the animation UI disappears before checking again
+                -- Wait for animation to complete
                 while playerGui:FindFirstChild("GameEndedAnimationUI") do
                     task.wait(1)
                 end
@@ -121,7 +105,7 @@ local gameEndDetection = spawn(function()
     end
 end)
 
--- Voting system (unchanged)
+-- Voting System
 local votingActive = { Next = false, Retry = false }
 
 local NextVoteToggle = Tab:CreateToggle({
@@ -131,7 +115,6 @@ local NextVoteToggle = Tab:CreateToggle({
    Callback = function(Value)
       votingActive.Next = Value
       if Value then
-         Rayfield:Notify({ Title = "Voted", Content = "You voted for Next Map", Duration = 3 })
          spawn(function()
              while votingActive.Next do
                  game:GetService("ReplicatedStorage").Remote.Server.OnGame.Voting.VoteNext:FireServer()
@@ -149,7 +132,6 @@ local RetryVoteToggle = Tab:CreateToggle({
    Callback = function(Value)
       votingActive.Retry = Value
       if Value then
-         Rayfield:Notify({ Title = "Voted", Content = "You voted to Retry Map", Duration = 3 })
          spawn(function()
              while votingActive.Retry do
                  game:GetService("ReplicatedStorage").Remote.Server.OnGame.Voting.VoteRetry:FireServer()
@@ -160,17 +142,17 @@ local RetryVoteToggle = Tab:CreateToggle({
    end,
 })
 
--- Toggle management
-NextVoteToggle:OnChanged(function(Value) 
-   if Value then 
-      votingActive.Retry = false 
-      RetryVoteToggle:Set(false) 
-   end 
+-- Toggle Exclusivity
+NextVoteToggle:OnChanged(function(Value)
+   if Value then
+      RetryVoteToggle:Set(false)
+      votingActive.Retry = false
+   end
 end)
 
-RetryVoteToggle:OnChanged(function(Value) 
-   if Value then 
-      votingActive.Next = false 
-      NextVoteToggle:Set(false) 
-   end 
+RetryVoteToggle:OnChanged(function(Value)
+   if Value then
+      NextVoteToggle:Set(false)
+      votingActive.Next = false
+   end
 end)
