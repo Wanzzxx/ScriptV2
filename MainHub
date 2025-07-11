@@ -1,4 +1,3 @@
-
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
    Name = "Wnnz",
@@ -13,6 +12,175 @@ local Window = Rayfield:CreateWindow({
 
 local Tab = Window:CreateTab("MENU", 4483362458)
 
+-- UI Toggle
+local StatsUIToggle = Tab:CreateToggle({
+   Name = "Player Stats UI",
+   CurrentValue = false,
+   Flag = "StatsUI",
+   Callback = function(Value)
+      if Value then
+         createStatsUI()
+      else
+         if game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("PlayerStatsGUI") then
+            game:GetService("Players").LocalPlayer.PlayerGui.PlayerStatsGUI:Destroy()
+         end
+      end
+   end,
+})
+
+-- Stats UI Creation Function
+function createStatsUI()
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    local Players = game:GetService("Players")
+    local player = Players.LocalPlayer
+    local RunService = game:GetService("RunService")
+
+    local function waitForPlayerData()
+        while not ReplicatedStorage:FindFirstChild("Player_Data") do
+            task.wait(1)
+        end
+        
+        local maxAttempts = 10
+        local attempts = 0
+        
+        while attempts < maxAttempts do
+            local playerData = ReplicatedStorage.Player_Data:FindFirstChild(player.Name)
+            if playerData then
+                return playerData
+            end
+            attempts += 1
+            task.wait(1)
+        end
+        
+        return nil
+    end
+
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "PlayerStatsGUI"
+    screenGui.Parent = player.PlayerGui
+
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Name = "MainFrame"
+    mainFrame.Size = UDim2.new(0, 220, 0, 150)
+    mainFrame.Position = UDim2.new(0.5, -110, 0.1, 0)
+    mainFrame.AnchorPoint = Vector2.new(0.5, 0)
+    mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    mainFrame.BorderSizePixel = 0
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+    mainFrame.Parent = screenGui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = mainFrame
+
+    local title = Instance.new("TextLabel")
+    title.Name = "Title"
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.Text = player.Name .. "'s Stats"
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 18
+    title.Parent = mainFrame
+
+    local cornerTitle = Instance.new("UICorner")
+    cornerTitle.CornerRadius = UDim.new(0, 8)
+    cornerTitle.Parent = title
+
+    local statLabels = {
+        beachBall = Instance.new("TextLabel"),
+        traitReroll = Instance.new("TextLabel"),
+        statKey = Instance.new("TextLabel"),
+        playTime = Instance.new("TextLabel")
+    }
+
+    local yPosition = 35
+    for _, label in pairs(statLabels) do
+        label.Size = UDim2.new(1, -20, 0, 25)
+        label.Position = UDim2.new(0, 10, 0, yPosition)
+        label.BackgroundTransparency = 1
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.Font = Enum.Font.Gotham
+        label.TextSize = 16
+        label.TextXAlignment = Enum.TextXAlignment.Left
+        label.Parent = mainFrame
+        yPosition += 25
+    end
+
+    statLabels.beachBall.Text = "Beach Balls: Loading..."
+    statLabels.traitReroll.Text = "Trait Rerolls: Loading..."
+    statLabels.statKey.Text = "Stat Keys: Loading..."
+    statLabels.playTime.Text = "Play Time: 00:00:00"
+
+    local function setupStatTrackers()
+        local playerData = waitForPlayerData()
+        
+        if not playerData then
+            for _, label in pairs(statLabels) do
+                if label ~= statLabels.playTime then
+                    label.Text = label.Text:gsub("Loading...", "Data Missing")
+                end
+            end
+            return
+        end
+
+        local beachBallsValue = playerData.Data:FindFirstChild("Beach Balls") or playerData.Data:FindFirstChild("BeachBalls")
+        if beachBallsValue and beachBallsValue:IsA("ValueBase") then
+            local function updateBeachBalls()
+                statLabels.beachBall.Text = "Beach Balls: "..tostring(beachBallsValue.Value)
+            end
+            beachBallsValue.Changed:Connect(updateBeachBalls)
+            updateBeachBalls()
+        else
+            statLabels.beachBall.Text = "Beach Balls: 0 (Not Found)"
+        end
+
+        local traitRerolls = playerData.Items:FindFirstChild("Trait Reroll") or playerData.Items:FindFirstChild("TraitReroll")
+        if traitRerolls and traitRerolls:FindFirstChild("Amount") then
+            local function updateTraitRerolls()
+                statLabels.traitReroll.Text = "Trait Rerolls: "..tostring(traitRerolls.Amount.Value)
+            end
+            traitRerolls.Amount.Changed:Connect(updateTraitRerolls)
+            updateTraitRerolls()
+        else
+            statLabels.traitReroll.Text = "Trait Rerolls: 0 (Not Found)"
+        end
+
+        local statKeys = playerData.Items:FindFirstChild("Stats Key") or playerData.Items:FindFirstChild("StatKey")
+        if statKeys and statKeys:FindFirstChild("Amount") then
+            local function updateStatKeys()
+                statLabels.statKey.Text = "Stat Keys: "..tostring(statKeys.Amount.Value)
+            end
+            statKeys.Amount.Changed:Connect(updateStatKeys)
+            updateStatKeys()
+        else
+            statLabels.statKey.Text = "Stat Keys: 0 (Not Found)"
+        end
+    end
+
+    local startTime = os.time()
+    local playTimeConnection
+    local function updatePlayTime()
+        local currentTime = os.time() - startTime
+        local hours = math.floor(currentTime / 3600)
+        local minutes = math.floor((currentTime % 3600) / 60)
+        local seconds = currentTime % 60
+        statLabels.playTime.Text = string.format("Play Time: %02d:%02d:%02d", hours, minutes, seconds)
+    end
+
+    setupStatTrackers()
+    playTimeConnection = RunService.Heartbeat:Connect(updatePlayTime)
+
+    player.AncestryChanged:Connect(function(_, parent)
+        if not parent then
+            playTimeConnection:Disconnect()
+        end
+    end)
+end
+
+-- Auto-remove UI elements
 spawn(function()
     while task.wait(1) do
         pcall(function()
@@ -27,10 +195,10 @@ spawn(function()
     end
 end)
 
+-- Game Results Display
 local function showGameResults()
     pcall(function()
         task.wait(3)
-        
         local player = game:GetService("Players").LocalPlayer
         local rewardsFolder = player:FindFirstChild("RewardsShow")
         
@@ -75,6 +243,7 @@ local function showGameResults()
     end)
 end
 
+-- Game end detection
 local lastCheck = 0
 spawn(function()
     while task.wait(0.5) do
@@ -88,6 +257,7 @@ spawn(function()
     end
 end)
 
+-- Voting system
 local votingActive = { Next = false, Retry = false }
 
 local NextVoteToggle = Tab:CreateToggle({
@@ -126,6 +296,7 @@ local RetryVoteToggle = Tab:CreateToggle({
    end,
 })
 
+-- Toggle management
 NextVoteToggle:OnChanged(function(Value) 
    if Value then 
       votingActive.Retry = false 
