@@ -1,331 +1,329 @@
-local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-local Window = Rayfield:CreateWindow({
-   Name = "Wanz HUB",
-   LoadingTitle = "Loading Codes",
-   LoadingSubtitle = "Wait...",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = nil,
-      FileName = "Voting System"
-   }
+if game.PlaceId ~= 72829404259339 then return end
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+--// Window & Tabs
+local Window = Fluent:CreateWindow({
+    Title = "Wanz HUB",
+    SubTitle = "Private Versions",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl
 })
 
-local Tab = Window:CreateTab("MENU", 4483362458)
+local Tabs = {
+    Main = Window:AddTab({ Title = "Menu", Icon = "" }),
+    Settings = Window:AddTab({ Title = "Pengaturan", Icon = "settings" })
+}
 
--- UI Toggle
-local StatsUIToggle = Tab:CreateToggle({
-   Name = "STATS UI",
-   CurrentValue = false,
-   Flag = "StatsUI",
-   Callback = function(Value)
-      if Value then
-         createStatsUI()
-      else
-         if game:GetService("Players").LocalPlayer.PlayerGui:FindFirstChild("PlayerStatsGUI") then
-            game:GetService("Players").LocalPlayer.PlayerGui.PlayerStatsGUI:Destroy()
-         end
-      end
-   end,
+local Options = Fluent.Options
+local votingActive = { Next = false, Retry = false }
+
+--------------------------------------------------------------------
+-- 1. TOGGLES
+--------------------------------------------------------------------
+
+-- Auto Rejoin When Ping Freeze (NEW IMPLEMENTATION)
+Options.PingFreezeRejoin = Tabs.Main:AddToggle("PingFreezeRejoin", {
+    Title = "Auto Rejoin When Ping Freeze/Stuck",
+    Default = false
 })
 
--- YOUR EXACT OLD STATS UI FUNCTION
-function createStatsUI()
-    local ReplicatedStorage = game:GetService("ReplicatedStorage")
-    local Players = game:GetService("Players")
-    local player = Players.LocalPlayer
-    local RunService = game:GetService("RunService")
+do
+    local heartbeatConnection = nil
 
-    local function waitForPlayerData()
-        while not ReplicatedStorage:FindFirstChild("Player_Data") do
-            task.wait(1)
-        end
-        
-        local maxAttempts = 10
-        local attempts = 0
-        
-        while attempts < maxAttempts do
-            local playerData = ReplicatedStorage.Player_Data:FindFirstChild(player.Name)
-            if playerData then
-                return playerData
-            end
-            attempts += 1
-            task.wait(1)
-        end
-        
-        return nil
-    end
+    Options.PingFreezeRejoin:OnChanged(function(enabled)
+        if enabled then
+            Fluent:Notify({
+                Title = "Auto Rejoin",
+                Content = "Enabled: Rejoining if ping freezes for 20 seconds",
+                Duration = 4
+            })
 
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "PlayerStatsGUI"
-    screenGui.Parent = player.PlayerGui
+            local Players = game:GetService("Players")
+            local TeleportService = game:GetService("TeleportService")
+            local RunService = game:GetService("RunService")
+            local LocalPlayer = Players.LocalPlayer
+            local lastPing = 0
+            local lastChangeTime = tick()
+            local PING_FREEZE_LIMIT = 20
 
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Name = "MainFrame"
-    mainFrame.Size = UDim2.new(0, 220, 0, 150)
-    mainFrame.Position = UDim2.new(0.5, -110, 0.1, 0)
-    mainFrame.AnchorPoint = Vector2.new(0.5, 0)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    mainFrame.BorderSizePixel = 0
-    mainFrame.Active = true
-    mainFrame.Draggable = true
-    mainFrame.Parent = screenGui
+            heartbeatConnection = RunService.Heartbeat:Connect(function()
+                local success, currentPing = pcall(function()
+                    return stats().Network.ServerStatsItem["Data Ping"]:GetValue()
+                end)
 
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
-    corner.Parent = mainFrame
+                if not success then return end
 
-    local title = Instance.new("TextLabel")
-    title.Name = "Title"
-    title.Size = UDim2.new(1, 0, 0, 30)
-    title.Position = UDim2.new(0, 0, 0, 0)
-    title.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.Text = player.Name .. "'s Stats"
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 18
-    title.Parent = mainFrame
-
-    local cornerTitle = Instance.new("UICorner")
-    cornerTitle.CornerRadius = UDim.new(0, 8)
-    cornerTitle.Parent = title
-
-    local statLabels = {
-        beachBall = Instance.new("TextLabel"),
-        traitReroll = Instance.new("TextLabel"),
-        statKey = Instance.new("TextLabel"),
-        playTime = Instance.new("TextLabel")
-    }
-
-    local yPosition = 35
-    for _, label in pairs(statLabels) do
-        label.Size = UDim2.new(1, -20, 0, 25)
-        label.Position = UDim2.new(0, 10, 0, yPosition)
-        label.BackgroundTransparency = 1
-        label.TextColor3 = Color3.fromRGB(255, 255, 255)
-        label.Font = Enum.Font.Gotham
-        label.TextSize = 16
-        label.TextXAlignment = Enum.TextXAlignment.Left
-        label.Parent = mainFrame
-        yPosition += 25
-    end
-
-    statLabels.beachBall.Text = "Beach Balls: Loading..."
-    statLabels.traitReroll.Text = "Trait Rerolls: Loading..."
-    statLabels.statKey.Text = "Stat Keys: Loading..."
-    statLabels.playTime.Text = "Play Time: 00:00:00"
-
-    local function setupStatTrackers()
-        local playerData = waitForPlayerData()
-        
-        if not playerData then
-            for _, label in pairs(statLabels) do
-                if label ~= statLabels.playTime then
-                    label.Text = label.Text:gsub("Loading...", "Data Missing")
+                if currentPing ~= lastPing then
+                    lastPing = currentPing
+                    lastChangeTime = tick()
+                elseif tick() - lastChangeTime >= PING_FREEZE_LIMIT then
+                    Fluent:Notify({
+                        Title = "Auto Rejoin",
+                        Content = "Ping frozen! Rejoining...",
+                        Duration = 4
+                    })
+                    TeleportService:Teleport(game.PlaceId, LocalPlayer)
                 end
-            end
-            return
-        end
-
-        local beachBallsValue = playerData.Data:FindFirstChild("Beach Balls") or playerData.Data:FindFirstChild("BeachBalls")
-        if beachBallsValue and beachBallsValue:IsA("ValueBase") then
-            local function updateBeachBalls()
-                statLabels.beachBall.Text = "Beach Balls: "..tostring(beachBallsValue.Value)
-            end
-            beachBallsValue.Changed:Connect(updateBeachBalls)
-            updateBeachBalls()
+            end)
         else
-            statLabels.beachBall.Text = "Beach Balls: 0 (Not Found)"
-        end
+            Fluent:Notify({
+                Title = "Auto Rejoin",
+                Content = "Disabled",
+                Duration = 3
+            })
 
-        local traitRerolls = playerData.Items:FindFirstChild("Trait Reroll") or playerData.Items:FindFirstChild("TraitReroll")
-        if traitRerolls and traitRerolls:FindFirstChild("Amount") then
-            local function updateTraitRerolls()
-                statLabels.traitReroll.Text = "Trait Rerolls: "..tostring(traitRerolls.Amount.Value)
+            if heartbeatConnection then
+                heartbeatConnection:Disconnect()
+                heartbeatConnection = nil
             end
-            traitRerolls.Amount.Changed:Connect(updateTraitRerolls)
-            updateTraitRerolls()
-        else
-            statLabels.traitReroll.Text = "Trait Rerolls: 0 (Not Found)"
-        end
-
-        local statKeys = playerData.Items:FindFirstChild("Stats Key") or playerData.Items:FindFirstChild("StatKey")
-        if statKeys and statKeys:FindFirstChild("Amount") then
-            local function updateStatKeys()
-                statLabels.statKey.Text = "Stat Keys: "..tostring(statKeys.Amount.Value)
-            end
-            statKeys.Amount.Changed:Connect(updateStatKeys)
-            updateStatKeys()
-        else
-            statLabels.statKey.Text = "Stat Keys: 0 (Not Found)"
-        end
-    end
-
-    local startTime = os.time()
-    local playTimeConnection
-    local function updatePlayTime()
-        local currentTime = os.time() - startTime
-        local hours = math.floor(currentTime / 3600)
-        local minutes = math.floor((currentTime % 3600) / 60)
-        local seconds = currentTime % 60
-        statLabels.playTime.Text = string.format("Play Time: %02d:%02d:%02d", hours, minutes, seconds)
-    end
-
-    setupStatTrackers()
-    playTimeConnection = RunService.Heartbeat:Connect(updatePlayTime)
-
-    player.AncestryChanged:Connect(function(_, parent)
-        if not parent then
-            playTimeConnection:Disconnect()
         end
     end)
 end
 
--- [ALL OTHER CODE REMAINS EXACTLY THE SAME AS BEFORE]
--- Auto-remove UI elements
-spawn(function()
-    while task.wait(1) do
-        pcall(function()
-            local gui = game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
-            if gui and gui:FindFirstChild("GameEndedAnimationUI") then 
-                gui.GameEndedAnimationUI:Destroy() 
+-- Auto Join Summer Event
+Options.AutoJoinSummer = Tabs.Main:AddToggle("AutoJoinSummer", {
+    Title = "Auto Join Summer Event",
+    Default = false
+})
+
+Options.AutoJoinSummer:OnChanged(function(enabled)
+    if enabled then
+        Fluent:Notify({
+            Title = "Summer Event",
+            Content = "Waiting for Lobby...",
+            Duration = 4
+        })
+
+        task.spawn(function()
+            local RS = game:GetService("ReplicatedStorage")
+            while Options.AutoJoinSummer.Value and not Fluent.Unloaded do
+                if workspace:FindFirstChild("Lobby") then
+                    local success, err = pcall(function()
+                        local args = { [1] = "Summer-Event" }
+                        RS:WaitForChild("Remote"):WaitForChild("Server"):WaitForChild("PlayRoom"):WaitForChild("Event"):FireServer(unpack(args))
+                        Fluent:Notify({
+                            Title = "Summer Event",
+                            Content = "Joined Summer Event!",
+                            Duration = 4
+                        })
+                    end)
+
+                    if success then break end
+                end
+                task.wait(2)
             end
-            
-            local summon = game:GetService("Players").LocalPlayer:FindFirstChild("Summon_Amount")
-            if summon then summon:Destroy() end
         end)
+    else
+        Fluent:Notify({ Title = "Summer Event", Content = "Auto join disabled", Duration = 3 })
     end
 end)
 
--- Improved Game Results Display with item matching
-local lastRewardsCheck = 0
-
-local function getPlayerItemAmount(itemName)
-    local playerData = game:GetService("ReplicatedStorage").Player_Data:FindFirstChild(game:GetService("Players").LocalPlayer.Name)
-    if playerData and playerData:FindFirstChild("Items") then
-        local item = playerData.Items:FindFirstChild(itemName)
-        if item and item:FindFirstChild("Amount") then
-            return item.Amount.Value
+-- Stats UI
+Options.StatsUI = Tabs.Main:AddToggle("StatsUI", { Title = "Status Checker", Default = false })
+Options.StatsUI:OnChanged(function(v)
+    if v then
+        createStatsUI()
+        Fluent:Notify({ Title = "Stats UI", Content = "UI shown", Duration = 3 })
+    else
+        local pg = game:GetService("Players").LocalPlayer.PlayerGui
+        if pg:FindFirstChild("PlayerStatsGUI") then
+            pg.PlayerStatsGUI:Destroy()
+            Fluent:Notify({ Title = "Stats UI", Content = "UI closed", Duration = 3 })
         end
+    end
+end)
+
+-- Vote Toggles
+Options.VoteNext = Tabs.Main:AddToggle("VoteNext", { Title = "Vote Next", Default = false })
+Options.VoteNext:OnChanged(function(v)
+    votingActive.Next = v
+    if v then
+        Fluent:Notify({ Title = "Vote", Content = "Voted for Next Map", Duration = 3 })
+        task.spawn(function()
+            while votingActive.Next do
+                game:GetService("ReplicatedStorage").Remote.Server.OnGame.Voting.VoteNext:FireServer()
+                task.wait(1)
+            end
+        end)
+        Options.VoteRetry:SetValue(false)
+    end
+end)
+
+Options.VoteRetry = Tabs.Main:AddToggle("VoteRetry", { Title = "Vote Retry", Default = false })
+Options.VoteRetry:OnChanged(function(v)
+    votingActive.Retry = v
+    if v then
+        Fluent:Notify({ Title = "Vote", Content = "Voted to Retry Map", Duration = 3 })
+        task.spawn(function()
+            while votingActive.Retry do
+                game:GetService("ReplicatedStorage").Remote.Server.OnGame.Voting.VoteRetry:FireServer()
+                task.wait(1)
+            end
+        end)
+        Options.VoteNext:SetValue(false)
+    end
+end)
+
+--------------------------------------------------------------------
+-- 2. STATS UI Function
+--------------------------------------------------------------------
+function createStatsUI()
+    local RS, Plrs = game:GetService("ReplicatedStorage"), game:GetService("Players")
+    local player, RunService = Plrs.LocalPlayer, game:GetService("RunService")
+
+    local function waitForData()
+        while not RS:FindFirstChild("Player_Data") do task.wait(1) end
+        for _ = 1,10 do
+            local d = RS.Player_Data:FindFirstChild(player.Name)
+            if d then return d end
+            task.wait(1)
+        end
+    end
+
+    local gui = Instance.new("ScreenGui", player.PlayerGui)
+    gui.Name = "PlayerStatsGUI"
+    local frame = Instance.new("Frame", gui)
+    frame.Size = UDim2.new(0,220,0,150)
+    frame.Position = UDim2.new(0.5,-110,0.1,0)
+    frame.BackgroundColor3 = Color3.fromRGB(40,40,40)
+    frame.Active, frame.Draggable = true,true
+    Instance.new("UICorner", frame).CornerRadius = UDim.new(0,8)
+
+    local title = Instance.new("TextLabel", frame)
+    title.Size = UDim2.new(1,0,0,30)
+    title.BackgroundColor3 = Color3.fromRGB(30,30,30)
+    title.TextColor3 = Color3.new(1,1,1)
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 18
+    title.Text = player.Name.."'s Stats"
+    Instance.new("UICorner", title).CornerRadius = UDim.new(0,8)
+
+    local lbls = {
+        beach = Instance.new("TextLabel"),
+        reroll = Instance.new("TextLabel"),
+        key = Instance.new("TextLabel"),
+        play = Instance.new("TextLabel")
+    }
+    local y=35
+    for _,l in pairs(lbls) do
+        l.Parent = frame
+        l.Size = UDim2.new(1,-20,0,25)
+        l.Position = UDim2.new(0,10,0,y)
+        l.BackgroundTransparency = 1
+        l.TextXAlignment = Enum.TextXAlignment.Left
+        l.Font = Enum.Font.Gotham
+        l.TextSize = 16
+        l.TextColor3 = Color3.new(1,1,1)
+        y += 25
+    end
+    lbls.beach.Text = "Beach Balls: Loading..."
+    lbls.reroll.Text = "Trait Rerolls: Loading..."
+    lbls.key.Text = "Stat Keys: Loading..."
+    lbls.play.Text = "Play Time: 00:00:00"
+
+    local data = waitForData()
+    if data then
+        local function link(item,parent,label,prefix)
+            local itm = data[parent]:FindFirstChild(item) or data[parent]:FindFirstChild(item:gsub(" ",""))
+            if itm and itm:FindFirstChild("Amount") then
+                local function upd() label.Text = prefix .. itm.Amount.Value end
+                itm.Amount.Changed:Connect(upd); upd()
+            else label.Text = prefix.."0 (Not Found)" end
+        end
+        link("Trait Reroll","Items",lbls.reroll,"Trait Rerolls: ")
+        link("Stats Key", "Items", lbls.key, "Stat Keys: ")
+        local beach = data.Data:FindFirstChild("Beach Balls") or data.Data:FindFirstChild("BeachBalls")
+        if beach then
+            beach.Changed:Connect(function() lbls.beach.Text = "Beach Balls: " .. beach.Value end)
+            lbls.beach.Text = "Beach Balls: " .. beach.Value
+        else lbls.beach.Text = "Beach Balls: 0 (Not Found)" end
+    end
+
+    local start = os.time()
+    local hb = RunService.Heartbeat:Connect(function()
+        local t = os.time() - start
+        lbls.play.Text = string.format("Play Time: %02d:%02d:%02d", t//3600, (t%3600)//60, t%60)
+    end)
+    player.AncestryChanged:Connect(function(_,p) if not p then hb:Disconnect() end end)
+end
+
+--------------------------------------------------------------------
+-- 3. Game-End Reward Notifier
+--------------------------------------------------------------------
+local function getPlayerItemAmount(name)
+    local p = game:GetService("Players").LocalPlayer
+    local d = game:GetService("ReplicatedStorage").Player_Data:FindFirstChild(p.Name)
+    if d and d:FindFirstChild("Items") then
+        local i = d.Items:FindFirstChild(name)
+        if i and i:FindFirstChild("Amount") then return i.Amount.Value end
     end
     return 0
 end
 
+local lastNotify = 0
 local function showGameResults()
-    pcall(function()
-        task.wait(2) -- Wait for rewards to load
-        local player = game:GetService("Players").LocalPlayer
-        local rewardsFolder = player:FindFirstChild("RewardsShow")
-        
-        if rewardsFolder then
-            local rewardLines = {"Game Finished", "You got:"}
-            local foundRewards = false
-            
-            for _, item in pairs(rewardsFolder:GetChildren()) do
-                local amount = 1
-                local name = item.Name
-                
-                if item:IsA("NumberValue") then
-                    amount = item.Value
-                elseif item:IsA("Folder") then
-                    if item:FindFirstChild("Amount") then
-                        amount = item.Amount.Value
-                    end
-                end
-                
-                if amount > 0 then
-                    local playerAmount = getPlayerItemAmount(name)
-                    table.insert(rewardLines, string.format("[%dx] %s [Now: %dx]", amount, name, playerAmount))
-                    foundRewards = true
-                end
-            end
-            
-            if foundRewards then
-                Rayfield:Notify({
-                    Title = "Game Results",
-                    Content = table.concat(rewardLines, "\n"),
-                    Duration = 5.5,
-                    Image = 4483362458,
-                })
-            else
-                Rayfield:Notify({
-                    Title = "Game Finished",
-                    Content = "No rewards detected",
-                    Duration = 3,
-                    Image = 4483362458,
-                })
-            end
+    if os.time() - lastNotify < 4 then return end
+    task.spawn(function()
+        task.wait(2)
+        local p = game:GetService("Players").LocalPlayer
+        local rw = p:FindFirstChild("RewardsShow")
+        if not rw then return end
+        local kids = rw:GetChildren()
+        if #kids == 0 then
+            Fluent:Notify({Title="Game Finished", Content="No rewards detected", Duration=3})
+            lastNotify = os.time()
+            return
         end
-        lastRewardsCheck = os.time()
+        local lines = {"Game Finished", "You got:"}
+        for _,it in ipairs(kids) do
+            local amt = it:IsA("NumberValue") and it.Value or ((it:FindFirstChild("Amount") and it.Amount.Value) or 1)
+            table.insert(lines, ("[ %dx ] %s  [Now: %dx]"):format(amt, it.Name, getPlayerItemAmount(it.Name)))
+        end
+        Fluent:Notify({Title="Game Results", Content=table.concat(lines, "\n"), Duration=6})
+        lastNotify = os.time()
     end)
 end
 
--- Game end detection
-spawn(function()
+task.spawn(function()
+    local Plr = game:GetService("Players").LocalPlayer
     while task.wait(0.5) do
-        pcall(function()
-            local playerGui = game:GetService("Players").LocalPlayer.PlayerGui
-            if playerGui:FindFirstChild("GameEndedAnimationUI") then
-                showGameResults()
-                while playerGui:FindFirstChild("GameEndedAnimationUI") do
-                    task.wait(1)
-                end
-            end
-        end)
+        local pg = Plr.PlayerGui
+        if pg:FindFirstChild("GameEndedAnimationUI") then
+            showGameResults()
+            repeat task.wait(1) until not pg:FindFirstChild("GameEndedAnimationUI")
+        end
     end
 end)
 
--- Voting system
-local votingActive = { Next = false, Retry = false }
-
-local NextVoteToggle = Tab:CreateToggle({
-   Name = "Vote Next",
-   CurrentValue = false,
-   Flag = "NextVoteToggle",
-   Callback = function(Value)
-      votingActive.Next = Value
-      if Value then
-         Rayfield:Notify({ Title = "Voted", Content = "You voted for Next Map", Duration = 3 })
-         spawn(function()
-             while votingActive.Next do
-                 game:GetService("ReplicatedStorage").Remote.Server.OnGame.Voting.VoteNext:FireServer()
-                 task.wait(1)
-             end
-         end)
-      end
-   end,
-})
-
-local RetryVoteToggle = Tab:CreateToggle({
-   Name = "Vote Retry",
-   CurrentValue = false,
-   Flag = "RetryVoteToggle",
-   Callback = function(Value)
-      votingActive.Retry = Value
-      if Value then
-         Rayfield:Notify({ Title = "Voted", Content = "You voted to Retry Map", Duration = 3 })
-         spawn(function()
-             while votingActive.Retry do
-                 game:GetService("ReplicatedStorage").Remote.Server.OnGame.Voting.VoteRetry:FireServer()
-                 task.wait(1)
-             end
-         end)
-      end
-   end,
-})
-
--- Toggle management
-NextVoteToggle:OnChanged(function(Value) 
-   if Value then 
-      votingActive.Retry = false 
-      RetryVoteToggle:Set(false) 
-   end 
+--------------------------------------------------------------------
+-- 4. AUTO‑CLEANUP
+--------------------------------------------------------------------
+task.spawn(function()
+    local Plr = game:GetService("Players").LocalPlayer
+    while task.wait(1) do
+        local pg = Plr:FindFirstChild("PlayerGui")
+        if pg and pg:FindFirstChild("GameEndedAnimationUI") then pg.GameEndedAnimationUI:Destroy() end
+        local s = Plr:FindFirstChild("Summon_Amount") if s then s:Destroy() end
+    end
 end)
 
-RetryVoteToggle:OnChanged(function(Value) 
-   if Value then 
-      votingActive.Next = false 
-      NextVoteToggle:Set(false) 
-   end 
-end)
+--------------------------------------------------------------------
+-- 5. SAVE‑MANAGER
+--------------------------------------------------------------------
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({})
+InterfaceManager:SetFolder("FluentScriptHub")
+SaveManager:SetFolder("FluentScriptHub/specific-game")
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
 
-Rayfield:LoadConfiguration()
+Window:SelectTab(1)
+Fluent:Notify({ Title = "Fluent", Content = "The script has been loaded.", Duration = 8 })
+SaveManager:LoadAutoloadConfig()
