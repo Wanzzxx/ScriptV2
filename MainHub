@@ -10,9 +10,8 @@ local Window = Rayfield:CreateWindow({
    }
 })
 
-local Tab = Window:CreateTab("MENU", 4483362458) -- Make sure this is before creating toggles
+local Tab = Window:CreateTab("MENU", 4483362458)
 
--- UI Toggle (now properly placed)
 local StatsUIToggle = Tab:CreateToggle({
    Name = "Show UI",
    CurrentValue = false,
@@ -28,7 +27,6 @@ local StatsUIToggle = Tab:CreateToggle({
    end,
 })
 
--- Stats UI Creation Function
 function createStatsUI()
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local Players = game:GetService("Players")
@@ -93,11 +91,8 @@ function createStatsUI()
     statLabels.traitReroll.Text = "Trait Rerolls: Loading..."
     statLabels.statKey.Text = "Stat Keys: Loading..."
     statLabels.playTime.Text = "Play Time: 00:00:00"
-
-    -- Rest of your stats UI code...
 end
 
--- Auto-remove UI elements
 spawn(function()
     while task.wait(1) do
         pcall(function()
@@ -112,7 +107,6 @@ spawn(function()
     end
 end)
 
--- Game Rewards System
 local rewardCheckCooldown = false
 
 local function getPlayerItemAmount(itemName)
@@ -132,7 +126,7 @@ local function showGameResults()
     rewardCheckCooldown = true
     
     pcall(function()
-        task.wait(2) -- Wait for rewards to load
+        task.wait(2)
         
         local player = game:GetService("Players").LocalPlayer
         local rewardsFolder = player:FindFirstChild("RewardsShow")
@@ -173,7 +167,6 @@ local function showGameResults()
     rewardCheckCooldown = false
 end
 
--- Game end detection
 spawn(function()
     while task.wait(0.5) do
         pcall(function()
@@ -191,7 +184,6 @@ spawn(function()
     end
 end)
 
--- Voting Toggles (now properly placed after Tab creation)
 local votingActive = { Next = false, Retry = false }
 
 local NextVoteToggle = Tab:CreateToggle({
@@ -230,7 +222,66 @@ local RetryVoteToggle = Tab:CreateToggle({
    end,
 })
 
--- Toggle management
+Tab:CreateSection("Summon Banners")
+
+local RateOffToggle = Tab:CreateToggle({
+    Name = "Auto Summon Rate-off Banner",
+    CurrentValue = false,
+    Flag = "RateOffBannerToggle",
+    Callback = function(Value)
+        if Value then
+            getgenv().RateOffAutoSummon = true
+            spawn(function()
+                while getgenv().RateOffAutoSummon and task.wait() do
+                    pcall(function()
+                        local args = {
+                            [1] = "x10",
+                            [2] = "Standard",
+                            [3] = {
+                                ["Epic"] = true,
+                                ["Legendary"] = true,
+                                ["Rare"] = true
+                            }
+                        }
+                        game:GetService("ReplicatedStorage").Remote.Server.Gambling.UnitsGacha:FireServer(unpack(args))
+                    end)
+                end
+            end)
+        else
+            getgenv().RateOffAutoSummon = false
+        end
+    end,
+})
+
+local StandardToggle = Tab:CreateToggle({
+    Name = "Auto Summon Standard Banner",
+    CurrentValue = false,
+    Flag = "StandardBannerToggle",
+    Callback = function(Value)
+        if Value then
+            getgenv().StandardAutoSummon = true
+            spawn(function()
+                while getgenv().StandardAutoSummon and task.wait() do
+                    pcall(function()
+                        local args = {
+                            [1] = "x10",
+                            [2] = "Rateup",
+                            [3] = {
+                                ["Epic"] = true,
+                                ["Legendary"] = true,
+                                ["Rare"] = true
+                            }
+                        }
+                        game:GetService("ReplicatedStorage").Remote.Server.Gambling.UnitsGacha:FireServer(unpack(args))
+                    end)
+                end
+            end)
+        else
+            getgenv().StandardAutoSummon = false
+        end
+    end,
+})
+
 NextVoteToggle:OnChanged(function(Value) 
    if Value then 
       votingActive.Retry = false 
@@ -244,3 +295,5 @@ RetryVoteToggle:OnChanged(function(Value)
       NextVoteToggle:Set(false) 
    end 
 end)
+
+Rayfield:LoadConfiguration()
