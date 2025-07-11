@@ -180,30 +180,5 @@ RetryVoteToggle:OnChanged(function(Value)
    end
 end)
 
--- ===== ADDITIONAL SCRIPTS TAB =====
-ScriptsTab:CreateSection("Extra Features")
-
--- Example: Auto Farm Toggle
-local AutoFarmToggle = ScriptsTab:CreateToggle({
-   Name = "Auto Farm Coins",
-   CurrentValue = false,
-   Flag = "AutoFarmToggle",
-   Callback = function(Value)
-      if Value then
-         Rayfield:Notify({Title = "Auto Farm", Content = "Enabled", Duration = 2})
-      else
-         Rayfield:Notify({Title = "Auto Farm", Content = "Disabled", Duration = 2})
-      end
-   end,
-})
-
--- Example: Teleport Button
-ScriptsTab:CreateButton({
-   Name = "Teleport to Spawn",
-   Callback = function()
-      Rayfield:Notify({Title = "Teleporting", Content = "Going to spawn point", Duration = 2})
-   end,
-})
-
 -- Load saved configurations (MUST BE LAST LINE)
 Rayfield:LoadConfiguration()
