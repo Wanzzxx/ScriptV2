@@ -16,19 +16,17 @@ local Tab = Window:CreateTab("MENU", 4483362458)
 spawn(function()
     while task.wait(1) do
         pcall(function()
-            local lobbyExists = workspace:FindFirstChild("Lobby")
+            -- Always remove Summon_Amount
+            local summon = game:GetService("Players").LocalPlayer:FindFirstChild("Summon_Amount")
+            if summon then summon:Destroy() end
             
-            -- Only remove animation UI if lobby doesn't exist
-            if not lobbyExists then
+            -- Only remove GameEndedAnimationUI when there's no lobby
+            if not workspace:FindFirstChild("Lobby") then
                 local gui = game:GetService("Players").LocalPlayer.PlayerGui
                 local animUI = gui:FindFirstChild("GameEndedAnimationUI")
                 if animUI then 
                     animUI:Destroy() 
                 end
-                
-                -- Also remove summon amount only when lobby doesn't exist
-                local summon = game:GetService("Players").LocalPlayer:FindFirstChild("Summon_Amount")
-                if summon then summon:Destroy() end
             end
         end)
     end
@@ -51,8 +49,32 @@ local StatsUIToggle = Tab:CreateToggle({
    end,
 })
 
--- Enhanced Reward Detection
+-- Enhanced Reward Detection with FIXED current amounts
 local rewardCheckCooldown = false
+
+local function getPlayerItemAmount(itemName)
+    local player = game:GetService("Players").LocalPlayer
+    local success, result = pcall(function()
+        -- Check both possible locations for player data
+        local playerData = game:GetService("ReplicatedStorage").Player_Data:FindFirstChild(player.Name)
+        if not playerData then
+            playerData = player:FindFirstChild("Data")
+        end
+        
+        if playerData then
+            -- Check both possible locations for items
+            local items = playerData:FindFirstChild("Items") or playerData:FindFirstChild("Inventory")
+            if items then
+                local item = items:FindFirstChild(itemName)
+                if item then
+                    return item:FindFirstChild("Amount") and item.Amount.Value or 1
+                end
+            end
+        end
+        return 0
+    end)
+    return success and result or 0
+end
 
 local function showGameResults()
     if rewardCheckCooldown then return end
@@ -66,21 +88,38 @@ local function showGameResults()
         
         if rewardsFolder then
             local rewardText = {"Game Finished", "You got:"}
+            local foundRewards = false
             
             for _, item in pairs(rewardsFolder:GetChildren()) do
-                local amount = (item:IsA("NumberValue") and item.Value) or 
-                             (item:FindFirstChild("Amount") and item.Amount.Value) or 0
+                local rewardAmount = 0
+                local itemName = item.Name
                 
-                if amount > 0 then
-                    table.insert(rewardText, string.format("[%dx] %s", amount, item.Name))
+                -- Handle different reward types
+                if item:IsA("NumberValue") then
+                    rewardAmount = item.Value
+                elseif item:IsA("Folder") then
+                    rewardAmount = item:FindFirstChild("Amount") and item.Amount.Value or 1
+                end
+                
+                if rewardAmount > 0 then
+                    local currentAmount = getPlayerItemAmount(itemName)
+                    table.insert(rewardText, string.format("[%dx] %s [Now: %dx]", rewardAmount, itemName, currentAmount))
+                    foundRewards = true
                 end
             end
             
-            if #rewardText > 2 then
+            if foundRewards then
                 Rayfield:Notify({
                     Title = "Game Results",
                     Content = table.concat(rewardText, "\n"),
-                    Duration = 6,
+                    Duration = 6.5,
+                    Image = 4483362458,
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Game Finished",
+                    Content = "No new rewards detected",
+                    Duration = 3,
                     Image = 4483362458,
                 })
             end
@@ -116,6 +155,7 @@ local NextVoteToggle = Tab:CreateToggle({
    Callback = function(Value)
       votingActive.Next = Value
       if Value then
+         Rayfield:Notify({ Title = "Voted", Content = "You voted for Next Map", Duration = 3 })
          spawn(function()
              while votingActive.Next do
                  game:GetService("ReplicatedStorage").Remote.Server.OnGame.Voting.VoteNext:FireServer()
@@ -133,6 +173,7 @@ local RetryVoteToggle = Tab:CreateToggle({
    Callback = function(Value)
       votingActive.Retry = Value
       if Value then
+         Rayfield:Notify({ Title = "Voted", Content = "You voted to Retry Map", Duration = 3 })
          spawn(function()
              while votingActive.Retry do
                  game:GetService("ReplicatedStorage").Remote.Server.OnGame.Voting.VoteRetry:FireServer()
