@@ -14,7 +14,7 @@ local Tab = Window:CreateTab("MENU", 4483362458)
 
 -- UI Toggle
 local StatsUIToggle = Tab:CreateToggle({
-   Name = "Player Stats UI",
+   Name = "Show Stats",
    CurrentValue = false,
    Flag = "StatsUI",
    Callback = function(Value)
