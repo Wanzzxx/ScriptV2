@@ -1,12 +1,12 @@
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local Window = Rayfield:CreateWindow({
    Name = "Wanz Hub [ARX]",
-   LoadingTitle = "Loading Data",
+   LoadingTitle = "Loading Codes",
    LoadingSubtitle = "Wait...",
    ConfigurationSaving = {
       Enabled = true,
-      FolderName = nil,
-      FileName = "Voting System"
+      FolderName = "WnnzConfig", -- Custom folder name
+      FileName = "WnnzSettings"  -- Configuration file name
    }
 })
 
@@ -16,7 +16,6 @@ local Tab = Window:CreateTab("MENU", 4483362458)
 spawn(function()
     while task.wait(1) do
         pcall(function()
-            -- Only remove if lobby doesn't exist
             if not workspace:FindFirstChild("Lobby") then
                 local gui = game:GetService("Players").LocalPlayer.PlayerGui
                 local animUI = gui:FindFirstChild("GameEndedAnimationUI")
@@ -25,18 +24,17 @@ spawn(function()
                 end
             end
             
-            -- Always remove summon amount
             local summon = game:GetService("Players").LocalPlayer:FindFirstChild("Summon_Amount")
             if summon then summon:Destroy() end
         end)
     end
 end)
 
--- Player Stats UI Toggle
+-- Player Stats UI Toggle with unique flag
 local StatsUIToggle = Tab:CreateToggle({
-   Name = "Show Stats",
+   Name = "Player Stats UI",
    CurrentValue = false,
-   Flag = "StatsUI",
+   Flag = "PlayerStatsToggle", -- Unique flag for saving
    Callback = function(Value)
       if Value then
          -- Create UI function here
@@ -57,7 +55,7 @@ local function showGameResults()
     rewardCheckCooldown = true
     
     pcall(function()
-        task.wait(2) -- Wait for rewards to load
+        task.wait(2)
         
         local player = game:GetService("Players").LocalPlayer
         local rewardsFolder = player:FindFirstChild("RewardsShow")
@@ -74,7 +72,7 @@ local function showGameResults()
                 end
             end
             
-            if #rewardText > 2 then -- If we found rewards
+            if #rewardText > 2 then
                 Rayfield:Notify({
                     Title = "Game Results",
                     Content = table.concat(rewardText, "\n"),
@@ -96,7 +94,6 @@ spawn(function()
             local playerGui = game:GetService("Players").LocalPlayer.PlayerGui
             if playerGui:FindFirstChild("GameEndedAnimationUI") then
                 showGameResults()
-                -- Wait for animation to complete
                 while playerGui:FindFirstChild("GameEndedAnimationUI") do
                     task.wait(1)
                 end
@@ -105,13 +102,13 @@ spawn(function()
     end
 end)
 
--- Voting System
+-- Voting System with unique flags
 local votingActive = { Next = false, Retry = false }
 
 local NextVoteToggle = Tab:CreateToggle({
    Name = "Vote Next",
    CurrentValue = false,
-   Flag = "NextVoteToggle",
+   Flag = "VoteNextToggle", -- Unique flag for saving
    Callback = function(Value)
       votingActive.Next = Value
       if Value then
@@ -128,7 +125,7 @@ local NextVoteToggle = Tab:CreateToggle({
 local RetryVoteToggle = Tab:CreateToggle({
    Name = "Vote Retry",
    CurrentValue = false,
-   Flag = "RetryVoteToggle",
+   Flag = "VoteRetryToggle", -- Unique flag for saving
    Callback = function(Value)
       votingActive.Retry = Value
       if Value then
@@ -156,3 +153,6 @@ RetryVoteToggle:OnChanged(function(Value)
       votingActive.Next = false
    end
 end)
+
+-- Load saved configurations (MUST BE AT THE BOTTOM)
+Rayfield:LoadConfiguration()
