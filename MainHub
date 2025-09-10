@@ -79,4 +79,6 @@ task.spawn(function()
 	-- Remove UI after finished
 	screenGui:Destroy()
 
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Wanzzxx/Script/refs/heads/main/AnimeRX.lua"))()
+	-- Run
+	loadstring(game:HttpGet("https://raw.githubusercontent.com/Wanzzxx/Script/refs/heads/main/AnimeRX.lua"))()
+end)
