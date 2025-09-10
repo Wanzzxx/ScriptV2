@@ -1,1 +1,82 @@
+--// LocalScript inside StarterGui
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+-- Create background frame (fixed size)
+local background = Instance.new("Frame")
+background.Size = UDim2.new(0.6, 0, 0.15, 0)
+background.Position = UDim2.new(0.5, 0, 0.5, 0)
+background.AnchorPoint = Vector2.new(0.5, 0.5)
+background.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+background.BorderSizePixel = 0
+background.Parent = screenGui
+
+-- Rounded corners
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0.25, 0)
+corner.Parent = background
+
+-- Gradient background
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(0, 170, 255)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 0, 255))
+})
+gradient.Rotation = 45
+gradient.Parent = background
+
+-- Drop shadow
+local shadow = Instance.new("ImageLabel")
+shadow.Size = UDim2.new(1.1, 0, 1.3, 0)
+shadow.Position = UDim2.new(0.5, 0, 0.5, 0)
+shadow.AnchorPoint = Vector2.new(0.5, 0.5)
+shadow.BackgroundTransparency = 1
+shadow.Image = "rbxassetid://1316045217"
+shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+shadow.ImageTransparency = 0.5
+shadow.ZIndex = background.ZIndex - 1
+shadow.Parent = background
+
+-- TextLabel
+local textLabel = Instance.new("TextLabel")
+textLabel.Size = UDim2.new(0.95, 0, 0.9, 0)
+textLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+textLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+textLabel.BackgroundTransparency = 1
+textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+textLabel.Font = Enum.Font.GothamBold
+textLabel.TextScaled = true
+textLabel.Parent = background
+
+-- Text stroke
+local stroke = Instance.new("UIStroke")
+stroke.Thickness = 2
+stroke.Color = Color3.fromRGB(0, 0, 0)
+stroke.Transparency = 0.3
+stroke.Parent = textLabel
+
+-- Typing animation settings
+local messages = {
+	"Loading W-HUB....", 
+	"Loaded.",
+}
+local typingSpeed = 0.07
+local messageDelay = 1.5
+
+-- Run animation once, then stop
+task.spawn(function()
+	for _, msg in ipairs(messages) do
+		textLabel.Text = ""
+		for i = 1, #msg do
+			textLabel.Text = string.sub(msg, 1, i)
+			task.wait(typingSpeed)
+		end
+		task.wait(messageDelay)
+	end
+
+	-- Remove UI after finished
+	screenGui:Destroy()
+
 loadstring(game:HttpGet("https://raw.githubusercontent.com/Wanzzxx/Script/refs/heads/main/AnimeRX.lua"))()
