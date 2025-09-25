@@ -1,21 +1,15 @@
--- Loader script
+-- 🌐 Universal Loader
 local placeId = game.PlaceId
-local Players = game:GetService("Players")
-local StarterGui = game:GetService("StarterGui")
 
 if placeId == 121864768012064 then
-    
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Wanzzxx/ScriptV2/refs/heads/main/Fish.lua"))()
+    -- Fish Game
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Wanzzxx/Script/refs/heads/main/Fish"))()
 
 elseif placeId == 72829404259339 then
-    
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Wanzzxx/ScriptV2/refs/heads/main/Arx.lua"))()
+    -- Anime RX
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Wanzzxx/Script/refs/heads/main/AnimeRX.lua"))()
 
 else
-    
-    StarterGui:SetCore("SendNotification", {
-        Title = "Wanz Hub",
-        Text = "This game is not supported.",
-        Duration = 5
-    })
+    -- Default Loader (Main Hub)
+    loadstring(game:HttpGet("https://raw.githubusercontent.com/Wanzzxx/ScriptV2/refs/heads/main/MainHub"))()
 end
