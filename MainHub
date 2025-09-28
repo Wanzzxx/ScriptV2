@@ -1,15 +1,2 @@
--- 🌐 Universal Loader
-local placeId = game.PlaceId
-
-if placeId == 121864768012064 then
-    -- Fish Game
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Wanzzxx/Script/refs/heads/main/Fish.lua"))()
-
-elseif placeId == 72829404259339 then
-    -- Anime RX
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Wanzzxx/Script/refs/heads/main/AnimeRX.lua"))()
-
-else
-    -- Default Loader (Main Hub)
-    loadstring(game:HttpGet("https://raw.githubusercontent.com/Wanzzxx/ScriptV2/refs/heads/main/MainHub"))()
-end
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Wanzzxx/Script/refs/heads/main/AnimeRX.lua"))()
+loadstring(game:HttpGet("https://raw.githubusercontent.com/Wanzzxx/Script/refs/heads/main/Fish.lua"))()
